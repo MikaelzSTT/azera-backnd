@@ -347,34 +347,43 @@ app.post("/businesses", async (req, res) => {
       });
     }
 
-    const userExists = await User.findById(userId);
+    let userExists = null;
 
-    if (!userExists) {
-      return res.status(400).json({
-        error: "Invalid userId",
-      });
-    }
+if (mongoose.Types.ObjectId.isValid(userId)) {
+  userExists = await User.findById(userId);
+}
 
-    const normalizedSlug = slug.trim().toLowerCase();
+if (!userExists) {
+  userExists = await User.findOne({ id: userId });
+}
 
-    const existingBusiness = await Business.findOne({
-      slug: normalizedSlug,
-      userId,
-    });
+if (!userExists) {
+  return res.status(400).json({
+    error: "Invalid userId",
+  });
+}
 
-    if (existingBusiness) {
-      return res.status(400).json({
-        error: "You already have a business with this slug",
-      });
-    }
+const normalizedSlug = slug.trim().toLowerCase();
+const ownerId = userExists._id.toString();
 
-    const newBusiness = await Business.create({
-      userId,
-      name: name.trim(),
-      slug: normalizedSlug,
-      googleReviewUrl: googleReviewUrl.trim(),
-      logoUrl: logoUrl || "",
-    });
+const existingBusiness = await Business.findOne({
+  slug: normalizedSlug,
+  userId: ownerId,
+});
+
+if (existingBusiness) {
+  return res.status(400).json({
+    error: "You already have a business with this slug",
+  });
+}
+
+const newBusiness = await Business.create({
+  userId: ownerId,
+  name: name.trim(),
+  slug: normalizedSlug,
+  googleReviewUrl: googleReviewUrl.trim(),
+  logoUrl: logoUrl || "",
+});
 
     return res.status(201).json({
       id: newBusiness._id.toString(),
